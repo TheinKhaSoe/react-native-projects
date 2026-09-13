@@ -1,10 +1,10 @@
 {
   "expo": {
-    "name": "reactive_native_projects",
+    "name": "Expense Tracker",
     "slug": "reactive_native_projects",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/Expense-Tracker-Icon.png",
     "scheme": "reactivenativeprojects",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -38,7 +38,9 @@
             "backgroundColor": "#000000"
           }
         }
-      ]
+      ],
+      "expo-sqlite",
+      "@react-native-community/datetimepicker"
     ],
     "experiments": {
       "typedRoutes": true,

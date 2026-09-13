@@ -1,0 +1,257 @@
+================================================================================
+ EXPENSE TRACKER - FLOW CHARTS & DIAGRAMS (Developer Reference)
+================================================================================
+ Repo root : reactive_native_projects
+ Companion : user-manual.txt | README.md
+ All dates : ISO "YYYY-MM-DD" in device-local time.
+ All money : REAL, rounded to 2 dp.
+
+CONTENTS
+  [0] Legend
+  [1] Navigation map (expo-router)
+  [2] App boot flow
+  [3] Add-transaction flow (UI + Chatbot paths)
+  [4] Delete flow (soft delete / tombstone)
+  [5] Chatbot message pipeline
+  [6] Chatbot intent dispatch table
+  [7] Month summary / budget calculation
+  [8] Theme (dark/light) flow
+  [9] Data model (SQLite)
+
+--------------------------------------------------------------------------------
+[0] LEGEND
+--------------------------------------------------------------------------------
+  +-->      flow arrow            [*]      decision branch
+  |         vertical flow         (...)    actor/file/system
+  ===       section separator     ~~>      async / fire-and-forget
+
+--------------------------------------------------------------------------------
+[1] NAVIGATION MAP (expo-router file tree)
+--------------------------------------------------------------------------------
+  app/_layout.tsx ...................... ROOT: WalletProvider + StatusBar + Stack
+    |
+    +--> (tabs)/_layout.tsx ............ bottom tab bar (theme-tinted)
+    |      +--> (tabs)/index.tsx ....... "Wallet"    tab   route: /
+    |      +--> (tabs)/history.tsx ..... "History"   tab   route: /history
+    |      +--> (tabs)/chat.tsx ........ "Chat"      tab   route: /chat
+    |      +--> (tabs)/settings.tsx .... "Settings"  tab   route: /settings
+    |
+    +--> add.tsx ....................... modal       route: /add?type=expense|income
+                                        (Stack.Screen presentation="modal")
+
+  Route strings used in code:  router.push("/add?type=expense")
+                               router.push("/add?type=income")
+                               router.push("/history")   (See all)
+                               router.push("/settings")  (gear + briefcase)
+                               router.back()             (close modal)
+
+--------------------------------------------------------------------------------
+[2] APP BOOT FLOW
+--------------------------------------------------------------------------------
+  (Launch)
+     |
+     v
+  RootLayout -> <WalletProvider>            [store/wallet-context.tsx]
+     |
+     v
+  boot useEffect (runs once)
+     |
+     +--> getDB()                           [lib/db.ts]
+     |      openDatabaseAsync("wallet.db")
+     |      PRAGMA journal_mode = WAL
+     |      CREATE TABLE IF NOT EXISTS x3   (transactions/fixed_income/settings)
+     |
+     +--> loadSettings(db)                  [lib/wallet.ts]
+     |      currency | theme | fixed_income_default
+     |
+     +--> applyTheme(mode)                  [lib/theme.ts]
+     |      colorScheme.set(resolved)       (drives NativeWind "dark:" classes)
+     |
+     +--> refreshInto(db)
+     |      getMonthSummary(currentMonth)   -> wallet card + tiles
+     |      spentBetween(today, today)      -> "Today" tile
+     |      getRecentTransactions(6)        -> recent list
+     |
+     +--> setReady(true)  (screens swap empty-states in)
+     |
+     v
+  watchSystemTheme(...) registered:
+     OS theme change -> re-apply user's mode -> setResolved() -> StatusBar
+
+--------------------------------------------------------------------------------
+[3] ADD-TRANSACTION FLOW (UI and Chatbot converge on the same action)
+--------------------------------------------------------------------------------
+  [UI path]                                  [Chatbot path]
+  Add modal (app/add.tsx)                    Chat input (app/(tabs)/chat.tsx)
+    amount>0? --no--> Save disabled            interpret(text, botData)
+    |                                                 |
+    type/category/note/date chosen             ADD intent: parseAmount +
+    |                                          findCategory + date word
+    "Save" press                                     |
+    |                                                |
+    +------------------+-----------------------------+
+                       |
+                       v
+        context.addTransaction(input)         [store/wallet-context.tsx]
+                       |
+                       v
+        wallet.addTransaction(db, input)      [lib/wallet.ts]
+          INSERT INTO transactions (uuid, type, amount, category,
+                                    note, date, deleted, created_at, updated_at)
+                       |
+                       +--> refresh()  (recompute home summary/recent)
+
+--------------------------------------------------------------------------------
+[4] DELETE FLOW (soft delete / tombstone)
+--------------------------------------------------------------------------------
+  History row trash icon
+     |
+     v
+  Alert "Delete transaction?" -> [Cancel] | [Delete]
+                                     |
+                                     v
+  wallet.softDeleteTransaction(db, id)
+     UPDATE transactions SET deleted=1, updated_at=now
+     |
+     +--> refresh()
+     (tombstone row is filtered from every screen by "deleted = 0")
+
+--------------------------------------------------------------------------------
+[5] CHATBOT MESSAGE PIPELINE
+--------------------------------------------------------------------------------
+  User sends text (or taps a chip)
+     |
+     v
+  push user bubble (list is inverted; newest first)
+  setThinking(true)
+     |
+     v
+  context.buildBotContext()                [store/wallet-context.tsx]
+     parallel queries:
+       month summary | today spent | yesterday spent | week spent
+       last-month summary | category totals | biggest expense | tx count
+     + closures addExpense()/addIncome() -> context.addTransaction
+     |
+     v
+  interpret(text, botData)                 [lib/chatbot.ts]
+     (intent dispatch - see [6])
+     |
+     v
+  ~350 ms delay -> push bot bubble -> setThinking(false)
+  (add intents mutate the DB immediately; summary numbers in the SAME reply
+   are pre-computed, so confirmations state the post-add totals)
+
+--------------------------------------------------------------------------------
+[6] CHATBOT INTENT DISPATCH TABLE (order matters - first match wins)
+--------------------------------------------------------------------------------
+  #  Regex trigger (lowercased input)              Response builder
+  -- --------------------------------------------  ---------------------------
+  1  ^add | ^log | ^record | ^track                ADD: parseAmount ->
+                                                    findCategory ->
+                                                    today/yesterday/tomorrow ->
+                                                    addExpense / addIncome
+  2  ^hi | ^hello | ^hey | good (morning|...)      greeting()
+  3  thank | thanks | nice | great                 friendly ack
+  4  help | what can you do | commands             HELP_TEXT
+  5  left | balance | remaining | afford           leftReply() + allowance
+  6  income | earn | salary | made | make          incomeReply(tf)
+       (salary + no tf -> fixed salary line)
+  7  spen|spent|pay|paid|bought|purchase|expense   see sub-branches below
+  8  category word present                         categoryText(cat, tf)
+  9  biggest | largest | most expensive            biggest expense line
+ 10  summary | overview | report | status          summaryText()
+ 11  per day | allowance                           dailyAllowanceLine()
+ 12  how many transactions                         count
+ 13  bare timeframe ("today?", "this month?")      spent/income for timeframe
+ 14  (none)                                        FALLBACK examples
+
+  Branch 7 sub-order:
+     a) category found AND "on" in text  -> categoryText (food/transport/...)
+     b) biggest|largest|most|top         -> biggest expense line
+     c) else                             -> spentFor(tf || this-month) + left
+
+  Timeframe detection (detectTimeframe), first match wins:
+     today/tonight -> yesterday -> (this|the) week -> last week ->
+     last/previous month -> this month | month | so far
+
+  Amount parsing (lib/money.ts parseAmount):
+     "5000" | "1,234" | "5k"=5000 | "1.5k"=1500 | "2m"=2,000,000
+  Category synonyms (lib/categories.ts):
+     e.g. lunch/coffee/grocery->Food  bus/taxi/fuel->Transport
+          rent/wifi/electricity->Bills  salary/wage->Salary  ...
+
+--------------------------------------------------------------------------------
+[7] MONTH SUMMARY / BUDGET CALCULATION
+--------------------------------------------------------------------------------
+  getMonthSummary(db, month)                 [lib/wallet.ts]
+
+    fixed = SELECT amount FROM fixed_income WHERE month = :month
+            |
+            +- found -> use it (per-month override)
+            +- none  -> settings.fixed_income_default
+
+    extra = SELECT SUM(amount) FROM transactions
+            WHERE deleted=0 AND type='income'
+              AND substr(date,1,7) = :month
+
+    expense = SELECT SUM(amount) FROM transactions
+              WHERE deleted=0 AND type='expense'
+                AND substr(date,1,7) = :month
+
+    income  = fixed + extra
+    left    = income - expense
+
+  Consumers:
+    Wallet card ("Available budget", chips, allowance footer)
+    History tiles + "Budget used %" bar
+    Chatbot (summary/left/income answers)
+    buildBotContext (all money answers)
+
+--------------------------------------------------------------------------------
+[8] THEME (DARK/LIGHT) FLOW
+--------------------------------------------------------------------------------
+  Settings tap: System | Light | Dark
+     |
+     v
+  context.setThemeMode(mode)                [store/wallet-context.tsx]
+     |
+     +--> applyTheme(mode)                  [lib/theme.ts]
+     |      resolved = mode=="system"
+     |                  ? Appearance.getColorScheme() ?? "light"
+     |                  : mode
+     |      colorScheme.set(resolved)       (react-native-css observable)
+     |      ==> every "dark:" class re-evaluates instantly
+     |
+     +--> setResolved(resolved)  -> StatusBar light/dark
+     +--> persist settings.theme
+     |
+     v
+  watchSystemTheme (registered at boot):
+     OS theme flip -> applyTheme(currentMode) -> setResolved()
+     (so an explicit Light/Dark choice survives OS flips;
+      "system" naturally tracks the OS)
+
+--------------------------------------------------------------------------------
+[9] DATA MODEL (SQLite - local only)
+--------------------------------------------------------------------------------
+  +---------------+     +---------------+     +----------------+
+  | transactions  |     | fixed_income  |     | settings       |
+  +---------------+     +---------------+     +----------------+
+  | id        PK  |     | month     PK  |     | key        PK  |
+  | uuid      UQ  |     | amount        |     | value      NULL|
+  | type (i|e)    |     | updated_at    |     | updated_at     |
+  | amount        |     +---------------+     +----------------+
+  | category      |            ^   keys: currency, theme,
+  | note  (NULL)  |            |         fixed_income_default
+  | date          |            |
+  | deleted       |     month override of
+  | created_at    |     the default salary
+  | updated_at    |            |
+  +---------------+            |
+
+  Relationship (logical):
+    fixed_income(month) .VS. substr(transactions.date, 1, 7)
+    -> summary(month) = fixed_income OR default  +  income txs  -  expenses
+
+  All data lives only in the app sandbox (wallet.db) on this device.
+================================================================================

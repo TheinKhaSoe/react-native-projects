@@ -1,0 +1,253 @@
+================================================================================
+ EXPENSE TRACKER - USER MANUAL (Developer Edition)
+================================================================================
+ Project    : reactive_native_projects  (app name: "Expense Tracker")
+ Stack      : Expo SDK 54 | React Native 0.81 (New Arch) | NativeWind v5 preview
+              (Tailwind v4) | expo-router v6 | expo-sqlite | TypeScript strict
+ Docs       : README.md (features) | this file
+ Updated    : 2026-09-12
+================================================================================
+
+CONTENTS
+  1. What the app is
+  2. Quick start (run the app)
+  3. Screen guide
+     3.1 Wallet (home)          3.4 Chat (assistant)
+     3.2 Add Transaction        3.5 Settings
+     3.3 History
+  4. Chatbot command reference
+  5. How the money math works
+  6. Data & storage
+  7. Dark / light theme
+  8. Troubleshooting / FAQ
+  9. Developer notes (files & extension points)
+
+--------------------------------------------------------------------------------
+1. WHAT THE APP IS
+--------------------------------------------------------------------------------
+A compact, digital-wallet style personal expense tracker with a built-in chat
+assistant. Single user - no admin roles; the device owner sees everything.
+
+Core capabilities:
+  * Fixed monthly income (salary) + unlimited extra income entries
+  * Daily expenses with emoji categories and notes
+  * Budget math per month: total income, total expense, budget left
+  * Chatbot that answers money questions in plain English (works OFFLINE,
+    no API key, no cost) and can even create records for you
+  * Dark / light / system theme (NativeWind)
+
+All data is stored locally in SQLite on the device. No server, no API, no
+accounts, no internet required.
+
+--------------------------------------------------------------------------------
+2. QUICK START (RUN THE APP)
+--------------------------------------------------------------------------------
+  npm install
+  npx expo start
+
+Then:
+  * Android device/emulator : scan QR with Expo Go, or press "a"
+  * iOS simulator           : press "i"
+  * Web                     : press "w"  (native date picker is hidden on web)
+
+No environment variables, no accounts, no API keys are required to run.
+
+--------------------------------------------------------------------------------
+3. SCREEN GUIDE
+--------------------------------------------------------------------------------
+3.1 WALLET (home tab)
+  * Greeting header + gear button (opens Settings)
+  * Wallet card (green gradient):
+      - "Available budget" = budget LEFT this month (turns rose if negative)
+      - Chips: Income (this month) and Spent (this month)
+      - Footer: fixed-income amount and "Xd left" in the month
+  * Quick actions:  [+ Expense] (rose)  [+ Income] (emerald)  [briefcase icon]
+      - briefcase = shortcut to Settings (fixed salary lives there)
+  * Stat tiles: Today | Income | Spent | Budget left
+  * "Recent activity" list (latest 6 records) - "See all" jumps to History
+
+3.2 ADD TRANSACTION (modal screen, opened from Wallet or History)
+  * Segmented switch: Expense | Income (button color follows type)
+  * Amount: large centered numeric input, live formatted preview under it
+      - numeric keyboard only; for "5k"-style shortcuts use the Chatbot
+  * Category chips (emoji):
+      Expense : Food Transport Shopping Bills Health Fun Education Other
+      Income  : Salary Freelance Bonus Gift Other
+  * Note (optional) - shown in lists and the biggest-expense answer
+  * Date: [Today] [Yesterday] [Pick date]  ("Pick date" is native-only)
+  * Income extra switch: "Set as monthly fixed salary"
+      - ON: the amount is ALSO stored as the default monthly fixed income
+  * Save is disabled until amount > 0
+
+3.3 HISTORY (month navigation + analytics)
+  * Month switcher  < September 2026 >   (cannot go past current month)
+  * Summary tiles: Income | Spent | Left
+  * "Budget used" progress bar (turns rose at >= 90%)
+  * "Daily expenses" bar chart - one bar per day, today is emerald,
+    footer shows first day / max value / last day
+  * "Spending by category" horizontal bars with amounts
+  * "Transactions" grouped by date with per-day expense total;
+    trash icon on each row asks for confirmation, then soft-deletes
+
+3.4 CHAT (assistant tab)
+  * Opens with a welcome message + online/typing indicator
+  * Suggestion chips: "Spent today?" "Income this month" "Budget left"
+                       "Summary" "Add expense 5k lunch"
+  * Type any question; the bot reads live SQLite data and answers instantly
+  * It can WRITE too: "add expense 5k lunch" inserts a record and confirms
+  * Type "help" for the full command list (see section 4)
+
+3.5 SETTINGS
+  * Appearance  : System | Light | Dark  (instant, persisted)
+  * Money:
+      - Currency symbol (e.g. $, Ks, ฿) - prefix used everywhere
+      - Monthly fixed income (salary)   - baseline income for EVERY month
+  * Data:
+      - "Reset all data" (confirm alert) - clears transactions + fixed-income
+        overrides; keeps currency/theme/fixed-income settings
+
+--------------------------------------------------------------------------------
+4. CHATBOT COMMAND REFERENCE
+--------------------------------------------------------------------------------
+QUERIES (read-only)
+  "how much did I spend today?"            -> today's total + budget left
+  "how much did I spend yesterday?"        -> yesterday total
+  "spent this week?"                       -> since Monday
+  "how much did I spend this month?"       -> month total + left
+  "last month?"                            -> previous month total
+  "income this month?"                     -> fixed salary + extra income
+  "what's my salary?"                      -> fixed monthly salary only
+  "how much budget left?" / "balance?"     -> left, spent, daily allowance
+  "how much can I spend per day?"          -> daily allowance line
+  "spent on food this month?"              -> category total + % of expenses
+       (works for: food transport shopping bills health fun education ...)
+  "biggest expense?"                       -> largest single expense
+  "summary" / "overview"                   -> income/expense/left + allowance
+  "how many transactions?"                 -> count this month
+
+ACTIONS (writes to the DB, then confirms)
+  "add expense 5000 lunch"
+  "add spent 3k coffee yesterday"
+  "log expense 1.5m car"
+  "add income 20k salary"
+  "record income 300 gift tomorrow"
+      amount formats : 5000 | 1,234 | 5k | 1.5k | 2m   (k=1,000  m=1,000,000)
+      date words     : today (default) | yesterday | tomorrow
+      category       : auto-detected from words (lunch->Food, bus->Transport...);
+                       falls back to "Other"
+
+MISC
+  "hi" / "hello" / "mingalaba"             -> greeting + allowance line
+  "thanks" / "nice"                        -> friendly reply
+  "help"                                   -> full cheat sheet
+  anything unrecognized                    -> fallback with examples
+
+--------------------------------------------------------------------------------
+5. HOW THE MONEY MATH WORKS
+--------------------------------------------------------------------------------
+  For any month M (key "YYYY-MM"):
+
+    fixedIncome  = fixed_income[M] if set   ELSE  fixed_income_default
+    extraIncome  = SUM(income transactions in M, deleted=0)
+    income       = fixedIncome + extraIncome
+    expense      = SUM(expense transactions in M, deleted=0)
+    LEFT         = income - expense            <-- "Available budget"
+    budgetUsed%  = min(100, expense / income * 100)   (History bar)
+    dailyAllow   = LEFT / daysLeftInMonth(today)
+
+  "days left" counts today itself through month end (min 1).
+  Negative LEFT renders as negative amount + warning in card/progress.
+
+--------------------------------------------------------------------------------
+6. DATA & STORAGE
+--------------------------------------------------------------------------------
+Local SQLite database "wallet.db" via expo-sqlite (WAL mode). Created and
+migrated automatically on first launch - no manual setup.
+
+  transactions
+    id INTEGER PK AUTOINCREMENT
+    uuid TEXT UNIQUE          stable row identity
+    type TEXT                 "income" | "expense"
+    amount REAL               2-dp money
+    category TEXT             emoji category (default Other)
+    note TEXT NULL
+    date TEXT                 "YYYY-MM-DD" (device-local day)
+    deleted INTEGER           0 = live, 1 = tombstone (soft delete)
+    created_at / updated_at   ISO timestamps
+
+  fixed_income
+    month TEXT PK ("YYYY-MM")  per-month override
+    amount REAL / updated_at
+
+  settings (key-value)
+    keys: currency | theme | fixed_income_default
+
+Notes:
+  * Deletes are SOFT (tombstones), filtered from all screens by deleted = 0.
+  * "Reset all data" DELETEs transactions + fixed_income rows only;
+    currency/theme/fixed-income-default survive.
+
+--------------------------------------------------------------------------------
+7. DARK / LIGHT THEME
+--------------------------------------------------------------------------------
+  Settings > Appearance -> System | Light | Dark
+  * Implementation: NativeWind v5 "dark:" classes resolve against the
+    "colorScheme" observable from react-native-css. applyTheme() calls
+    colorScheme.set(...) - the whole UI restyles instantly.
+  * "System" follows the OS and live-updates on OS theme flips.
+  * Explicit Light/Dark sticks even when the OS flips (we re-apply it).
+  * Choice persists in settings.theme; StatusBar follows the resolved
+    scheme (light icons on dark, dark icons on light).
+
+--------------------------------------------------------------------------------
+8. TROUBLESHOOTING / FAQ
+--------------------------------------------------------------------------------
+  Q: Chatbot gave a weird answer.
+  A: Include its keywords (spend/income/left/food/summary...). Type "help"
+     for the full list. Unknown input returns example commands.
+
+  Q: History is empty / numbers look wrong.
+  A: Check the selected month (top switcher). Fixed salary only counts once
+     set in Settings (or per-month via the Add-screen salary switch).
+
+  Q: I deleted something by accident.
+  A: There is no undo; deletes always ask for confirmation first.
+
+  Q: Web (w) differences.
+  A: Native date picker is hidden - use Today/Yesterday chips or chatbot
+     date words. Everything else works.
+
+  Q: Where is my data?
+  A: On the device, inside the app sandbox, in the local SQLite database
+     (wallet.db). It never leaves your device.
+
+--------------------------------------------------------------------------------
+9. DEVELOPER NOTES (FILES & EXTENSION POINTS)
+--------------------------------------------------------------------------------
+  app/         screens: (tabs)/{index,history,chat,settings,_layout}.tsx,
+               add.tsx (modal), _layout.tsx (root)
+  components/  Screen, WalletCard, TransactionRow, MonthSwitcher, StatTile,
+               BarRow, DailyBars, EmptyState
+  lib/         db.ts (schema/open)     wallet.ts (queries/mutations)
+               chatbot.ts (intents)   theme.ts   categories.ts
+               money.ts (format/parse) dates.ts   types.ts   uuid.ts
+  store/       wallet-context.tsx - single source of state + actions
+
+  Validate before committing:
+     npx tsc --noEmit     (must be 0 errors)
+     npx expo lint        (must be clean)
+
+  Common extensions:
+  * New category : lib/categories.ts -> add to EXPENSE_/INCOME_CATEGORIES and
+                   SYNONYMS (chatbot picks it up automatically)
+  * New intent   : lib/chatbot.ts -> add a regex branch inside interpret()
+                   before the FALLBACK return
+  * New screen   : app/<name>.tsx + register in the right layout
+  * Currency fmt : lib/money.ts formatMoney() (symbol prefix + separators)
+
+  Conventions:
+  * Styling: Tailwind className + "dark:" variants (no raw StyleSheet colors)
+  * Dates  : lib/dates.ts helpers only - never toISOString() for day keys
+  * Money  : store via parseAmount(); display via formatMoney()
+  * DB     : always go through lib/wallet.ts - screens never write SQL
+================================================================================
