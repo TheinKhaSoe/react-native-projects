@@ -20,10 +20,12 @@ import {
   todayISO,
 } from "@/lib/dates";
 import type { BotData } from "@/lib/chatbot";
+import { resolveLang, t as translate, type Lang, type TKey } from "@/lib/i18n";
 import type {
   AppSettings,
   CategoryTotal,
   DayTotal,
+  LanguageMode,
   MonthSummary,
   NewTransaction,
   ThemeMode,
@@ -36,6 +38,10 @@ export interface WalletContextValue {
   theme: ThemeMode;
   resolved: "light" | "dark";
   username: string;
+  /** Language preference ("system" follows the device). */
+  language: LanguageMode;
+  /** Concretely resolved language for translations. */
+  lang: Lang;
   fixedIncomeDefault: number;
   fixedIncomeThisMonth: number;
   summary: MonthSummary;
@@ -48,6 +54,7 @@ export interface WalletContextValue {
   setCurrency: (v: string) => Promise<void>;
   setFixedIncomeDefault: (v: number) => Promise<void>;
   setUsername: (name: string) => Promise<void>;
+  setLanguage: (mode: LanguageMode) => Promise<void>;
   resetAll: () => Promise<void>;
   monthSummaryFor: (month: string) => Promise<MonthSummary>;
   transactionsFor: (month: string) => Promise<Transaction[]>;
@@ -75,11 +82,13 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     theme: "system",
     fixedIncomeDefault: 0,
     username: "",
+    language: "system",
   });
   const [resolved, setResolved] = useState<"light" | "dark">("light");
   const [summary, setSummary] = useState<MonthSummary>(EMPTY_SUMMARY);
   const [todaySpent, setTodaySpent] = useState(0);
   const [recent, setRecent] = useState<Transaction[]>([]);
+  const [lang, setLang] = useState<Lang>("en");
 
   const refreshInto = useCallback(async (db: DB) => {
     const month = currentMonthKey();
@@ -108,6 +117,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       const s = await wallet.loadSettings(db);
       if (cancelled) return;
       setSettings(s);
+      setLang(resolveLang(s.language));
       applyTheme(s.theme);
       setResolved(resolveScheme(s.theme));
       await refreshInto(db);
@@ -188,6 +198,17 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     [refresh]
   );
 
+  const setLanguage = useCallback(
+    async (mode: LanguageMode) => {
+      const db = dbRef.current;
+      if (!db) return;
+      await wallet.setLanguage(db, mode);
+      setSettingsState({ language: mode });
+      setLang(resolveLang(mode));
+    },
+    [setSettingsState]
+  );
+
   const resetAll = useCallback(async () => {
     const db = dbRef.current;
     if (!db) return;
@@ -256,6 +277,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       month,
       daysLeft: daysLeftInMonth(today),
       fixedIncome: sum.fixedIncome,
+      lang,
       summary: { income: sum.income, expense: sum.expense, left: sum.left },
       todaySpent: todayS,
       yesterdaySpent: yesterdayS,
@@ -275,7 +297,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
         void addTransaction({ type: "income", amount, category, note, date });
       },
     };
-  }, [settings.currency, addTransaction]);
+  }, [settings.currency, addTransaction, lang]);
 
   const value: WalletContextValue = {
     ready,
@@ -283,6 +305,8 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     theme: settings.theme,
     resolved,
     username: settings.username,
+    language: settings.language,
+    lang,
     fixedIncomeDefault: settings.fixedIncomeDefault,
     fixedIncomeThisMonth: summary.fixedIncome,
     summary,
@@ -295,6 +319,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     setCurrency,
     setFixedIncomeDefault,
     setUsername,
+    setLanguage,
     resetAll,
     monthSummaryFor,
     transactionsFor,
@@ -312,3 +337,11 @@ export function useWallet(): WalletContextValue {
   return ctx;
 }
 
+/** Translation hook: `const t = useT()` → `t("add.title")`. */
+export function useT() {
+  const { lang } = useWallet();
+  return useCallback(
+    (key: TKey, params?: Record<string, string | number>) => translate(lang, key, params),
+    [lang]
+  );
+}

@@ -2,16 +2,21 @@ import React from "react";
 import { Text, View } from "react-native";
 import { shortDateLabel, todayISO } from "@/lib/dates";
 import { formatCompact } from "@/lib/money";
+import { useWallet } from "@/store/wallet-context";
+import type { Lang } from "@/lib/i18n";
 import type { DayTotal } from "@/lib/types";
 
 interface DailyBarsProps {
   totals: DayTotal[];
   month: string;
   currency: string;
+  lang?: Lang;
 }
 
 /** Compact daily expense bar chart (pure Views, zero chart deps). */
-export function DailyBars({ totals, month, currency }: DailyBarsProps) {
+export function DailyBars({ totals, month, currency, lang: propLang }: DailyBarsProps) {
+  const ctx = useWallet();
+  const lang = propLang ?? ctx.lang;
   const [y, m] = month.split("-").map(Number);
   const days = new Date(y, m, 0).getDate();
   const map = new Map(totals.map((t) => [t.date, t.total]));
@@ -40,13 +45,13 @@ export function DailyBars({ totals, month, currency }: DailyBarsProps) {
       </View>
       <View className="mt-1.5 flex-row justify-between">
         <Text className="text-[10px] text-slate-400 dark:text-slate-500">
-          {shortDateLabel(`${month}-01`)}
+          {shortDateLabel(`${month}-01`, lang)}
         </Text>
         <Text className="text-[10px] text-slate-400 dark:text-slate-500">
           max {formatCompact(max)} {currency}
         </Text>
         <Text className="text-[10px] text-slate-400 dark:text-slate-500">
-          {shortDateLabel(`${month}-${days}`)}
+          {shortDateLabel(`${month}-${days}`, lang)}
         </Text>
       </View>
     </View>

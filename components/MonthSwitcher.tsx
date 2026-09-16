@@ -2,13 +2,17 @@ import React from "react";
 import { Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { addMonths, monthLabel } from "@/lib/dates";
+import { useWallet } from "@/store/wallet-context";
 
 interface MonthSwitcherProps {
   month: string;
   onChange: (month: string) => void;
+  lang?: "en" | "my";
 }
 
-export function MonthSwitcher({ month, onChange }: MonthSwitcherProps) {
+export function MonthSwitcher({ month, onChange, lang: propLang }: MonthSwitcherProps) {
+  const ctx = useWallet();
+  const lang = propLang ?? ctx.lang;
   const now = new Date();
   const currentKey = `${now.getFullYear()}-${`${now.getMonth() + 1}`.padStart(2, "0")}`;
   const isCurrent = month === currentKey;
@@ -24,7 +28,7 @@ export function MonthSwitcher({ month, onChange }: MonthSwitcherProps) {
       </Pressable>
 
       <Text className="text-[15px] font-bold text-slate-900 dark:text-slate-100">
-        {monthLabel(month)}
+        {monthLabel(month, lang)}
       </Text>
 
       <Pressable

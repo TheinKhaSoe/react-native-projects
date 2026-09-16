@@ -1,15 +1,35 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Alert, Platform, Pressable, ScrollView, Text, TextInput, View } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
 import { Screen } from "@/components/Screen";
-import { useWallet } from "@/store/wallet-context";
-import type { ThemeMode } from "@/lib/types";
+import { type TKey } from "@/lib/i18n";
+import type { LanguageMode, ThemeMode } from "@/lib/types";
+import { useT, useWallet } from "@/store/wallet-context";
+import { Ionicons } from "@expo/vector-icons";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import {
+  Alert,
+  Platform,
+  Pressable,
+  ScrollView,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 
 const THEME_OPTIONS: { value: ThemeMode; label: string; icon: string }[] = [
   { value: "system", label: "System", icon: "phone-portrait-outline" },
   { value: "light", label: "Light", icon: "sunny-outline" },
   { value: "dark", label: "Dark", icon: "moon-outline" },
 ];
+
+const LANG_OPTIONS: { value: LanguageMode; labelKey: string; icon: string }[] =
+  [
+    {
+      value: "system",
+      labelKey: "set.langHint",
+      icon: "phone-portrait-outline",
+    },
+    { value: "en", labelKey: "set.langEn", icon: "language-outline" },
+    { value: "my", labelKey: "set.langMy", icon: "language-outline" },
+  ];
 
 /** How long to wait after the last keystroke before auto-saving. */
 const AUTOSAVE_MS = 700;
@@ -20,23 +40,35 @@ export default function SettingsScreen() {
     theme,
     fixedIncomeDefault,
     username,
+    language,
     setThemeMode,
     setCurrency,
     setFixedIncomeDefault,
     setUsername,
+    setLanguage,
     resetAll,
   } = useWallet();
+  const t = useT();
 
   const [nameDraft, setNameDraft] = useState(username);
   const [currencyDraft, setCurrencyDraft] = useState(currency);
   const [salaryDraft, setSalaryDraft] = useState(
-    fixedIncomeDefault > 0 ? String(fixedIncomeDefault) : ""
+    fixedIncomeDefault > 0 ? String(fixedIncomeDefault) : "",
   );
   // Which field is currently flashing the "Saved ✓" badge.
   const [savedKey, setSavedKey] = useState<string | null>(null);
 
-  const saveTimers = useRef<Partial<Record<string, ReturnType<typeof setTimeout>>>>({});
+  const saveTimers = useRef<
+    Partial<Record<string, ReturnType<typeof setTimeout>>>
+  >({});
   const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Sync drafts when settings change from other places (e.g. reset).
+  useEffect(() => {
+    setNameDraft(username);
+    setCurrencyDraft(currency);
+    setSalaryDraft(fixedIncomeDefault > 0 ? String(fixedIncomeDefault) : "");
+  }, [username, currency, fixedIncomeDefault]);
 
   const flashSaved = useCallback((key: string) => {
     setSavedKey(key);
@@ -54,7 +86,7 @@ export default function SettingsScreen() {
         void task().then(() => flashSaved(key));
       }, AUTOSAVE_MS);
     },
-    [flashSaved]
+    [flashSaved],
   );
 
   /** Flush a pending autosave immediately (blur / submit editing). */
@@ -67,7 +99,7 @@ export default function SettingsScreen() {
       }
       void task().then(() => flashSaved(key));
     },
-    [flashSaved]
+    [flashSaved],
   );
 
   // Clear pending timers if the screen unmounts mid-save.
@@ -93,19 +125,27 @@ export default function SettingsScreen() {
     return setFixedIncomeDefault(Number.isFinite(n) && n > 0 ? n : 0);
   };
 
+  const saveLanguage = useCallback(
+    (mode: LanguageMode) => setLanguage(mode),
+    [setLanguage],
+  );
+
   return (
-    <Screen>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
+    <Screen style={{ marginBottom: -50 }}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 32 }}
+      >
         <Text className="mt-2 text-[22px] font-bold text-slate-900 dark:text-slate-100">
-          Settings
+          {t("set.title")}
         </Text>
 
         {/* Profile */}
-        <SectionTitle text="Profile" />
+        <SectionTitle text={t("set.profile")} />
         <View className="rounded-2xl bg-white px-4 py-3 dark:bg-neutral-800">
           <View className="flex-row items-center justify-between">
             <Text className="text-[12px] font-medium text-slate-500 dark:text-slate-400">
-              Your name
+              {t("set.name")}
             </Text>
             <SavedBadge show={savedKey === "name"} />
           </View>
@@ -125,18 +165,20 @@ export default function SettingsScreen() {
               setNameDraft(trimmed);
               commit("name", () => setUsername(trimmed));
             }}
-            placeholder="Your name"
+            placeholder={t("set.name")}
             placeholderTextColor="#94a3b8"
             maxLength={30}
             className="mt-1.5 rounded-xl bg-slate-100 px-3 py-2 text-[15px] font-semibold text-slate-900 dark:bg-neutral-700 dark:text-slate-100"
           />
           <Text className="mt-1.5 text-[11px] text-slate-400 dark:text-slate-500">
-            This wallet belongs to {username || "you"} · saved automatically
+            {t("set.nameHint", {
+              name: username || t("onb.namePlaceholder").toLowerCase(),
+            })}
           </Text>
         </View>
 
         {/* Appearance */}
-        <SectionTitle text="Appearance" />
+        <SectionTitle text={t("set.appearance")} />
         <View className="flex-row rounded-2xl bg-white p-1.5 dark:bg-neutral-800">
           {THEME_OPTIONS.map((opt) => {
             const active = theme === opt.value;
@@ -158,7 +200,11 @@ export default function SettingsScreen() {
                     active ? "text-white" : "text-slate-500 dark:text-slate-400"
                   }`}
                 >
-                  {opt.label}
+                  {opt.value === "system"
+                    ? t("theme.system")
+                    : opt.value === "light"
+                      ? t("theme.light")
+                      : t("theme.dark")}
                 </Text>
               </Pressable>
             );
@@ -166,16 +212,46 @@ export default function SettingsScreen() {
         </View>
         {Platform.OS === "web" ? (
           <Text className="mt-1.5 text-[11px] text-slate-400 dark:text-slate-500">
-            On web the colors follow the theme of your browser automatically.
+            {t("set.langHint")}
           </Text>
         ) : null}
 
+        {/* Language */}
+        <SectionTitle text={t("set.language")} />
+        <View className="flex-row rounded-2xl bg-white p-1.5 dark:bg-neutral-800">
+          {LANG_OPTIONS.map((opt) => {
+            const active = language === opt.value;
+            return (
+              <Pressable
+                key={opt.value}
+                onPress={() => void saveLanguage(opt.value)}
+                className={`flex-1 flex-row items-center justify-center gap-1.5 rounded-xl py-2.5 ${
+                  active ? "bg-emerald-600" : ""
+                }`}
+              >
+                <Ionicons
+                  name={opt.icon as keyof typeof Ionicons.glyphMap}
+                  size={15}
+                  color={active ? "#ffffff" : "#64748b"}
+                />
+                <Text
+                  className={`text-[13px] font-semibold ${
+                    active ? "text-white" : "text-slate-500 dark:text-slate-400"
+                  }`}
+                >
+                  {t(opt.labelKey as TKey)}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+
         {/* Money */}
-        <SectionTitle text="Money" />
+        <SectionTitle text={t("set.money")} />
         <View className="rounded-2xl bg-white px-4 py-3 dark:bg-neutral-800">
           <View className="flex-row items-center justify-between">
             <Text className="text-[12px] font-medium text-slate-500 dark:text-slate-400">
-              Currency symbol
+              {t("set.currency")}
             </Text>
             <SavedBadge show={savedKey === "currency"} />
           </View>
@@ -200,7 +276,7 @@ export default function SettingsScreen() {
 
           <View className="flex-row items-center justify-between">
             <Text className="text-[12px] font-medium text-slate-500 dark:text-slate-400">
-              Monthly fixed income (salary)
+              {t("set.salary")}
             </Text>
             <SavedBadge show={savedKey === "salary"} />
           </View>
@@ -215,7 +291,9 @@ export default function SettingsScreen() {
               const n = Number(text);
               const clean = Number.isFinite(n) && n > 0 ? String(n) : "";
               setSalaryDraft(clean);
-              commit("salary", () => setFixedIncomeDefault(n > 0 && Number.isFinite(n) ? n : 0));
+              commit("salary", () =>
+                setFixedIncomeDefault(n > 0 && Number.isFinite(n) ? n : 0),
+              );
             }}
             keyboardType="decimal-pad"
             placeholder="0"
@@ -223,38 +301,39 @@ export default function SettingsScreen() {
             className="mt-1.5 rounded-xl bg-slate-100 px-3 py-2 text-[15px] font-semibold text-slate-900 dark:bg-neutral-700 dark:text-slate-100"
           />
           <Text className="mt-1.5 text-[11px] text-slate-400 dark:text-slate-500">
-            Counted as income for every month. Extra income can be added per transaction.
+            {t("set.moneyHint")}
           </Text>
         </View>
 
         {/* Data */}
-        <SectionTitle text="Data" />
+        <SectionTitle text={t("set.data")} />
         <Pressable
           onPress={() =>
-            Alert.alert(
-              "Reset all data",
-              "Deletes your name, budget and every transaction (income, expense, history). You'll set up your profile again. This can't be undone.",
-              [
-                { text: "Cancel", style: "cancel" },
-                {
-                  text: "Reset",
-                  style: "destructive",
-                  onPress: () => void resetAll(),
-                },
-              ]
-            )
+            Alert.alert(t("set.reset"), t("set.resetMsg"), [
+              { text: t("alert.cancel"), style: "cancel" },
+              {
+                text: t("alert.reset"),
+                style: "destructive",
+                onPress: () => void resetAll(),
+              },
+            ])
           }
           className="flex-row items-center justify-between rounded-2xl bg-white px-4 py-3.5 dark:bg-neutral-800"
         >
           <View className="flex-row items-center gap-2">
             <Ionicons name="trash-outline" size={17} color="#f43f5e" />
-            <Text className="text-[14px] font-semibold text-rose-500">Reset all data</Text>
+            <Text className="text-[14px] font-semibold text-rose-500">
+              {t("set.reset")}
+            </Text>
           </View>
           <Ionicons name="chevron-forward" size={16} color="#94a3b8" />
         </Pressable>
 
-        <Text className="mt-6 text-center text-[11px] text-slate-300 dark:text-slate-600">
-          Expense Tracker · your data stays on your device
+        <Text
+          className="mt-6 text-center text-[11px] text-slate-300 dark:text-slate-600"
+          style={{ marginBottom: -50 }}
+        >
+          {t("set.footer")}
         </Text>
       </ScrollView>
     </Screen>

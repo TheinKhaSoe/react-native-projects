@@ -2,6 +2,9 @@ export type TransactionType = "income" | "expense";
 
 export type ThemeMode = "system" | "light" | "dark";
 
+/** UI language preference. "system" follows the device/browser language. */
+export type LanguageMode = "system" | "en" | "my";
+
 export interface Transaction {
   id: number;
   uuid: string;
@@ -53,4 +56,6 @@ export interface AppSettings {
   fixedIncomeDefault: number;
   /** Owner of this wallet, shown in the UI. Empty until the user sets it. */
   username: string;
+  /** UI language (Myanmar Burmese / English). */
+  language: LanguageMode;
 }

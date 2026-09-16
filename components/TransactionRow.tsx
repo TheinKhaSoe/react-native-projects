@@ -2,17 +2,22 @@ import React from "react";
 import { Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { emojiFor } from "@/lib/categories";
+import { useWallet } from "@/store/wallet-context";
 import { formatMoney } from "@/lib/money";
 import { friendlyDateLabel } from "@/lib/dates";
+import type { Lang } from "@/lib/i18n";
 import type { Transaction } from "@/lib/types";
 
 interface TransactionRowProps {
   tx: Transaction;
   currency: string;
+  lang?: Lang;
   onDelete?: (id: number) => void;
 }
 
-export function TransactionRow({ tx, currency, onDelete }: TransactionRowProps) {
+export function TransactionRow({ tx, currency, lang: propLang, onDelete }: TransactionRowProps) {
+  const ctx = useWallet();
+  const lang = propLang ?? ctx.lang;
   const isIncome = tx.type === "income";
   return (
     <View className="flex-row items-center rounded-2xl bg-white px-3 py-3 dark:bg-neutral-800">
@@ -33,7 +38,7 @@ export function TransactionRow({ tx, currency, onDelete }: TransactionRowProps) 
           {tx.note ? <Text className="font-normal text-slate-400 dark:text-slate-500"> · {tx.note}</Text> : null}
         </Text>
         <Text className="mt-0.5 text-[12px] text-slate-400 dark:text-slate-500">
-          {friendlyDateLabel(tx.date)}
+          {friendlyDateLabel(tx.date, lang)}
         </Text>
       </View>
 

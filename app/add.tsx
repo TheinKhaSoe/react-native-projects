@@ -15,15 +15,17 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import { Screen } from "@/components/Screen";
-import { useWallet } from "@/store/wallet-context";
+import { useT, useWallet } from "@/store/wallet-context";
 import { categoriesFor } from "@/lib/categories";
 import { formatMoney, parseAmount } from "@/lib/money";
 import { todayISO, shiftDays } from "@/lib/dates";
+import { categoryLabel } from "@/lib/i18n";
 
 export default function AddTransactionScreen() {
   const params = useLocalSearchParams<{ type?: string; amount?: string }>();
   const paramType: "expense" | "income" = params.type === "income" ? "income" : "expense";
-  const { currency, username, addTransaction, setFixedIncomeDefault } = useWallet();
+  const { currency, username, lang, addTransaction, setFixedIncomeDefault } = useWallet();
+  const t = useT();
 
   const [type, setType] = useState<"expense" | "income">(paramType);
   // Keep the screen in sync if it is re-opened with different params.
@@ -86,9 +88,9 @@ export default function AddTransactionScreen() {
 
   const categoryList = useMemo(() => categoriesFor(type), [type]);
 
-  const switchType = (t: "expense" | "income") => {
-    setType(t);
-    setCategory(t === "income" ? "Salary" : "Food");
+  const switchType = (typeVal: "expense" | "income") => {
+    setType(typeVal);
+    setCategory(typeVal === "income" ? "Salary" : "Food");
   };
 
   const pickDate = (iso: string) => {
@@ -131,10 +133,10 @@ export default function AddTransactionScreen() {
         <View className="mt-1 flex-row items-center justify-between">
           <View>
             <Text className="text-[20px] font-bold text-slate-900 dark:text-slate-100">
-              New transaction
+              {t("add.title")}
             </Text>
             <Text className="mt-0.5 text-[12px] text-slate-400 dark:text-slate-500">
-              {username ? `${username}'s wallet` : "Wallet"}
+              {username ? `${username}'s wallet` : t("wallet.generic")}
             </Text>
           </View>
           <Pressable
@@ -147,18 +149,18 @@ export default function AddTransactionScreen() {
 
         {/* Type switch */}
         <View className="mt-4 flex-row rounded-2xl bg-white p-1.5 dark:bg-neutral-800">
-          {(["expense", "income"] as const).map((t) => {
-            const active = type === t;
+          {(["expense", "income"] as const).map((typeVal) => {
+            const active = type === typeVal;
             return (
               <Pressable
-                key={t}
-                onPress={() => switchType(t)}
+                key={typeVal}
+                onPress={() => switchType(typeVal)}
                 className={`flex-1 flex-row items-center justify-center gap-1.5 rounded-xl py-2.5 ${
-                  active ? (t === "income" ? "bg-emerald-600" : "bg-rose-500") : ""
+                  active ? (typeVal === "income" ? "bg-emerald-600" : "bg-rose-500") : ""
                 }`}
               >
                 <Ionicons
-                  name={t === "income" ? "arrow-down-circle" : "arrow-up-circle"}
+                  name={typeVal === "income" ? "arrow-down-circle" : "arrow-up-circle"}
                   size={16}
                   color={active ? "#ffffff" : "#94a3b8"}
                 />
@@ -167,7 +169,7 @@ export default function AddTransactionScreen() {
                     active ? "text-white" : "text-slate-400 dark:text-slate-500"
                   }`}
                 >
-                  {t === "income" ? "Income" : "Expense"}
+                  {typeVal === "income" ? t("action.income") : t("action.expense")}
                 </Text>
               </Pressable>
             );
@@ -177,12 +179,9 @@ export default function AddTransactionScreen() {
         {/* Amount */}
         <View className="mt-6 items-center">
           <Text className="text-[12px] font-medium uppercase tracking-wide text-slate-400 dark:text-slate-500">
-            Amount
+            {t("add.amount")}
           </Text>
           <View className="mt-2 flex-row items-center justify-center">
-            <Text className="mr-1 text-[28px] font-bold text-slate-400 dark:text-slate-500">
-              {currency}
-            </Text>
             <TextInput
               value={amountText}
               onChangeText={setAmountText}
@@ -198,6 +197,9 @@ export default function AddTransactionScreen() {
                 paddingVertical: 0,
               }}
             />
+            <Text className="ml-1 text-[28px] font-bold text-slate-400 dark:text-slate-500">
+              {currency}
+            </Text>
           </View>
           {amount !== null && amount > 0 ? (
             <Text className="mt-1 text-[12px] text-slate-400 dark:text-slate-500">
@@ -208,7 +210,7 @@ export default function AddTransactionScreen() {
 
         {/* Categories */}
         <Text className="mb-2 mt-6 text-[12px] font-bold uppercase tracking-wide text-slate-400 dark:text-slate-500">
-          Category
+          {t("add.category")}
         </Text>
         <View className="flex-row flex-wrap gap-2">
           {categoryList.map((c) => {
@@ -227,7 +229,7 @@ export default function AddTransactionScreen() {
                     active ? "text-white" : "text-slate-600 dark:text-slate-300"
                   }`}
                 >
-                  {c.name}
+                  {categoryLabel(lang, c.name)}
                 </Text>
               </Pressable>
             );
@@ -236,24 +238,24 @@ export default function AddTransactionScreen() {
 
         {/* Note */}
         <Text className="mb-2 mt-6 text-[12px] font-bold uppercase tracking-wide text-slate-400 dark:text-slate-500">
-          Note (optional)
+          {t("add.note")}
         </Text>
         <TextInput
           value={note}
           onChangeText={setNote}
-          placeholder="e.g. lunch with team"
+          placeholder={t("add.notePlaceholder")}
           placeholderTextColor="#94a3b8"
           className="rounded-2xl bg-white px-4 py-3 text-[14px] text-slate-900 dark:bg-neutral-800 dark:text-slate-100"
         />
 
         {/* Date */}
         <Text className="mb-2 mt-6 text-[12px] font-bold uppercase tracking-wide text-slate-400 dark:text-slate-500">
-          Date
+          {t("add.date")}
         </Text>
         <View className="flex-row flex-wrap items-center gap-2">
           {[
-            { label: "Today", iso: todayISO() },
-            { label: "Yesterday", iso: shiftDays(todayISO(), -1) },
+            { label: t("add.today"), iso: todayISO() },
+            { label: t("add.yesterday"), iso: shiftDays(todayISO(), -1) },
           ].map((opt) => {
             const active = date === opt.iso && !showPicker;
             return (
@@ -291,7 +293,7 @@ export default function AddTransactionScreen() {
                   showPicker ? "text-white" : "text-slate-600 dark:text-slate-300"
                 }`}
               >
-                Pick date
+                {t("add.pickDate")}
               </Text>
             </Pressable>
           ) : null}
@@ -317,10 +319,10 @@ export default function AddTransactionScreen() {
           <View className="mt-5 flex-row items-center justify-between rounded-2xl bg-white px-4 py-3.5 dark:bg-neutral-800">
             <View className="mr-3 flex-1">
               <Text className="text-[14px] font-semibold text-slate-800 dark:text-slate-200">
-                Set as monthly fixed salary
+                {t("add.fixedSalary")}
               </Text>
               <Text className="mt-0.5 text-[11px] text-slate-400 dark:text-slate-500">
-                Applies this amount to every month as your baseline income.
+                {t("add.fixedSalaryHint")}
               </Text>
             </View>
             <Switch
@@ -349,7 +351,7 @@ export default function AddTransactionScreen() {
               valid ? "text-white" : "text-slate-500 dark:text-slate-600"
             }`}
           >
-            {saving ? "Saving…" : `Add ${type === "income" ? "income" : "expense"}`}
+            {saving ? t("add.saving") : t(type === "income" ? "add.addIncome" : "add.addExpense")}
           </Text>
         </Pressable>
       </ScrollView>
@@ -357,4 +359,3 @@ export default function AddTransactionScreen() {
     </Animated.View>
   );
 }
-

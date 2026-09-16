@@ -1,6 +1,7 @@
 import React from "react";
 import { Text, View } from "react-native";
 import { emojiFor } from "@/lib/categories";
+import { categoryLabel, type Lang } from "@/lib/i18n";
 import { formatMoney } from "@/lib/money";
 
 interface BarRowProps {
@@ -9,10 +10,11 @@ interface BarRowProps {
   max: number;
   currency: string;
   type: "income" | "expense";
+  lang: Lang;
 }
 
 /** Horizontal category breakdown bar. */
-export function BarRow({ category, total, max, currency, type }: BarRowProps) {
+export function BarRow({ category, total, max, currency, type, lang }: BarRowProps) {
   const pct = max > 0 ? Math.max(2, Math.round((total / max) * 100)) : 0;
   const income = type === "income";
   return (
@@ -25,7 +27,13 @@ export function BarRow({ category, total, max, currency, type }: BarRowProps) {
         />
       </View>
       <Text
-        className="ml-2 w-24 text-right text-[13px] font-semibold text-slate-700 dark:text-slate-300"
+        className="mx-2 flex-1 text-[13px] font-medium text-slate-700 dark:text-slate-300"
+        numberOfLines={1}
+      >
+        {categoryLabel(lang, category)}
+      </Text>
+      <Text
+        className="w-24 text-right text-[13px] font-semibold text-slate-700 dark:text-slate-300"
         numberOfLines={1}
       >
         {formatMoney(total, currency)}

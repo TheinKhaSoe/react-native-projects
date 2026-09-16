@@ -1,6 +1,6 @@
 import { Screen } from "@/components/Screen";
 import { interpret, welcomeMessage, type BotData } from "@/lib/chatbot";
-import { useWallet } from "@/store/wallet-context";
+import { useT, useWallet } from "@/store/wallet-context";
 import { Ionicons } from "@expo/vector-icons";
 import React, { useCallback, useEffect, useState } from "react";
 import {
@@ -20,16 +20,6 @@ interface ChatMessage {
   text: string;
 }
 
-// Duplicate entries are allowed on purpose (keyed by index, not text) —
-// e.g. the same suggestion can appear twice or more.
-const SUGGESTIONS = [
-  "Spent today?",
-  "Income this month",
-  "Budget left",
-  "Summary",
-  "Add expense 5k lunch",
-];
-
 /**
  * Height of the software keyboard (0 when closed), measured directly instead
  * of relying on KeyboardAvoidingView — which does nothing on web and is
@@ -46,8 +36,6 @@ function useKeyboardHeight(): number {
       const vv = window.visualViewport;
       if (!vv) return;
       const update = () => {
-        // Overlap = layout viewport height hidden by the mobile keyboard.
-        // Ignore <120px shifts — those are the URL bar collapsing/expanding.
         const overlap = Math.max(
           0,
           window.innerHeight - vv.height - vv.offsetTop,
@@ -87,59 +75,62 @@ function makeMessage(role: ChatMessage["role"], text: string): ChatMessage {
 }
 
 export default function ChatScreen() {
-  const { buildBotContext } = useWallet();
+  const { buildBotContext, lang } = useWallet();
+  const t = useT();
   const insets = useSafeAreaInsets();
   const keyboardHeight = useKeyboardHeight();
+
+  const SUGGESTIONS: [string, string][] = [
+    [t("sug.today"), "Spent today?"],
+    [t("sug.incomeMonth"), "Income this month"],
+    [t("sug.budgetLeft"), "Budget left"],
+    [t("sug.summary"), "Summary"],
+    [t("sug.addExpense"), "Add expense 5000 lunch"],
+  ];
+
   const [messages, setMessages] = useState<ChatMessage[]>([
-    makeMessage("bot", welcomeMessage()),
+    makeMessage("bot", welcomeMessage(t)),
   ]);
   const [input, setInput] = useState("");
   const [thinking, setThinking] = useState(false);
 
+  useEffect(() => {
+    setMessages([makeMessage("bot", welcomeMessage(t))]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lang]);
+
   const send = useCallback(
-    async (raw?: string) => {
+    async (raw?: string, display?: string) => {
       const text = (raw ?? input).trim();
       if (!text || thinking) return;
 
-      setMessages((prev) => [makeMessage("user", text), ...prev]);
+      setMessages((prev) => [makeMessage("user", display ?? text), ...prev]);
       setInput("");
       setThinking(true);
 
       try {
         const data: BotData = await buildBotContext();
         const reply = interpret(text, data);
-        // small delay so the assistant feels alive
         setTimeout(() => {
           setMessages((prev) => [makeMessage("bot", reply), ...prev]);
           setThinking(false);
         }, 350);
       } catch {
         setMessages((prev) => [
-          makeMessage(
-            "bot",
-            "Sorry — something went wrong reading your data 😥",
-          ),
+          makeMessage("bot", t("chat.placeholder")),
           ...prev,
         ]);
         setThinking(false);
       }
     },
-    [input, thinking, buildBotContext],
+    [input, thinking, buildBotContext, t],
   );
 
-  // Bottom spacing of the composer:
-  //  - keyboard closed: gesture-bar inset + a small gap. No double padding —
-  //    Screen's own bottom inset is turned off below.
-  //  - keyboard open: the window is NOT resized when the keyboard shows
-  //    (Android edge-to-edge ignores "adjustResize"; iOS never resizes), so
-  //    the composer's bottom edge stays at the screen bottom — underneath the
-  //    keyboard. Pad by the measured keyboard height (+ a small gap) so the
-  //    input row is lifted exactly above the keyboard.
   const composerBottom =
     keyboardHeight > 0 ? keyboardHeight + 8 : insets.bottom + 8;
 
   return (
-    <Screen padded={false} bottomInset={false}>
+    <Screen padded={false} bottomInset={false} style={{ marginBottom: -50 }}>
       <View style={{ flex: 1 }}>
         {/* Header */}
         <View style={{ paddingHorizontal: 16 }}>
@@ -149,10 +140,10 @@ export default function ChatScreen() {
             </View>
             <View>
               <Text className="text-[17px] font-bold text-slate-900 dark:text-slate-100">
-                Wallet Assistant
+                {t("chat.assistant")}
               </Text>
               <Text className="text-[11px] text-emerald-600 dark:text-emerald-400">
-                {thinking ? "typing…" : "online"}
+                {thinking ? t("chat.typing") : t("chat.online")}
               </Text>
             </View>
           </View>
@@ -164,8 +155,6 @@ export default function ChatScreen() {
           keyExtractor={(m) => m.id}
           style={{ flex: 1 }}
           showsVerticalScrollIndicator={false}
-          // Suggestion chips / send button work on the first tap while the
-          // keyboard is open; dragging the list dismisses it.
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode={
             Platform.OS === "ios" ? "interactive" : "on-drag"
@@ -184,26 +173,23 @@ export default function ChatScreen() {
           style={{ paddingBottom: composerBottom }}
         >
           <View className="flex-row flex-wrap gap-2 pb-2">
-            {SUGGESTIONS.map((s, i) => (
+            {SUGGESTIONS.map(([label, trigger], i) => (
               <Pressable
-                key={`${i}-${s}`}
-                onPress={() => void send(s)}
+                key={i}
+                onPress={() => void send(trigger, label)}
                 className="rounded-full border border-slate-200 bg-lime-500 px-3 py-1.5 dark:border-neutral-600 dark:bg-neutral-800"
               >
                 <Text className="text-[12px] font-medium text-white dark:text-slate-300">
-                  {s}
+                  {label}
                 </Text>
               </Pressable>
             ))}
           </View>
-          <View
-            className="flex-row items-end gap-2"
-            style={{ marginBottom: -50 }}
-          >
+          <View className="flex-row items-end gap-2">
             <TextInput
               value={input}
               onChangeText={setInput}
-              placeholder="Ask about your money…"
+              placeholder={t("chat.placeholder")}
               placeholderTextColor="#94a3b8"
               multiline
               className="max-h-24 min-h-[40px] flex-1 rounded-2xl bg-white px-4 py-2.5 text-[14px] text-slate-900 dark:bg-neutral-800 dark:text-slate-100"

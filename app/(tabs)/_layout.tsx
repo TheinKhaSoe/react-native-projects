@@ -1,6 +1,6 @@
-import { Tabs } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
 import { useWallet } from "@/store/wallet-context";
+import { Ionicons } from "@expo/vector-icons";
+import { Tabs } from "expo-router";
 
 export default function TabsLayout() {
   const { resolved } = useWallet();
@@ -24,7 +24,11 @@ export default function TabsLayout() {
         options={{
           title: "Wallet",
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name={dark ? "wallet" : "wallet-outline"} size={size} color={color} />
+            <Ionicons
+              name={dark ? "wallet" : "wallet-outline"}
+              size={size}
+              color={color}
+            />
           ),
         }}
       />
@@ -47,7 +51,9 @@ export default function TabsLayout() {
           title: "Chat",
           tabBarIcon: ({ color, size }) => (
             <Ionicons
-              name={dark ? "chatbubble-ellipses" : "chatbubble-ellipses-outline"}
+              name={
+                dark ? "chatbubble-ellipses" : "chatbubble-ellipses-outline"
+              }
               size={size}
               color={color}
             />

@@ -4,7 +4,7 @@ import { StatTile } from "@/components/StatTile";
 import { TransactionRow } from "@/components/TransactionRow";
 import { WalletCard } from "@/components/WalletCard";
 import { daysLeftInMonth, todayISO } from "@/lib/dates";
-import { useWallet } from "@/store/wallet-context";
+import { useT, useWallet } from "@/store/wallet-context";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import React from "react";
@@ -13,17 +13,18 @@ import { Pressable, ScrollView, Text, View } from "react-native";
 export default function WalletHome() {
   const { ready, currency, username, summary, todaySpent, recent } =
     useWallet();
+  const t = useT();
   const daysLeft = daysLeftInMonth(todayISO());
   const hour = new Date().getHours();
   const greeting =
     hour < 12
-      ? "Good morning ☀️"
+      ? t("greeting.morning")
       : hour < 18
-        ? "Good afternoon 👋"
-        : "Good evening 🌙";
+        ? t("greeting.afternoon")
+        : t("greeting.evening");
 
   return (
-    <Screen>
+    <Screen style={{ marginBottom: -50 }}>
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 24 }}
@@ -31,7 +32,7 @@ export default function WalletHome() {
         {/* Header */}
         <View className="mt-2 flex-row items-center justify-between">
           <View>
-            <Text className="ext-[18px] text-slate-400 dark:text-slate-500">
+            <Text className="text-[18px] font-semibold text-slate-900 dark:text-white">
               {greeting}, {username || "friend"}
             </Text>
           </View>
@@ -60,7 +61,9 @@ export default function WalletHome() {
             style={{ elevation: 3 }}
           >
             <Ionicons name="add" size={18} color="#fff" />
-            <Text className="text-[13px] font-bold text-white">Expense</Text>
+            <Text className="text-[13px] font-bold text-white">
+              {t("action.expense")}
+            </Text>
           </Pressable>
           <Pressable
             onPress={() => router.push("/add?type=income")}
@@ -68,27 +71,23 @@ export default function WalletHome() {
             style={{ elevation: 3 }}
           >
             <Ionicons name="add" size={18} color="#fff" />
-            <Text className="text-[13px] font-bold text-white">Income</Text>
-          </Pressable>
-          <Pressable
-            onPress={() => router.push("/settings")}
-            className="w-12 items-center justify-center rounded-2xl bg-white dark:bg-neutral-800"
-          >
-            <Ionicons name="briefcase-outline" size={19} color="#059669" />
+            <Text className="text-[13px] font-bold text-white">
+              {t("action.income")}
+            </Text>
           </Pressable>
         </View>
 
         {/* Month tiles */}
         <View className="mt-4 flex-row gap-2.5">
           <StatTile
-            label="Today"
+            label={t("tile.today")}
             value={todaySpent}
             currency={currency}
             icon="today-outline"
             tone="sky"
           />
           <StatTile
-            label="Income"
+            label={t("tile.totalIncome")}
             value={summary.income}
             currency={currency}
             icon="arrow-down-circle-outline"
@@ -97,14 +96,14 @@ export default function WalletHome() {
         </View>
         <View className="mt-2.5 flex-row gap-2.5">
           <StatTile
-            label="Spent"
+            label={t("tile.spent")}
             value={summary.expense}
             currency={currency}
             icon="arrow-up-circle-outline"
             tone="rose"
           />
           <StatTile
-            label="Budget left"
+            label={t("tile.budgetLeft")}
             value={summary.left}
             currency={currency}
             icon="wallet-outline"
@@ -115,11 +114,11 @@ export default function WalletHome() {
         {/* Recent */}
         <View className="mt-6 flex-row items-center justify-between">
           <Text className="text-[16px] font-bold text-slate-900 dark:text-slate-100">
-            Recent activity
+            {t("home.recent")}
           </Text>
           <Pressable onPress={() => router.push("/history")} hitSlop={8}>
             <Text className="text-[13px] font-semibold text-emerald-600 dark:text-emerald-400">
-              See all
+              {t("home.seeAll")}
             </Text>
           </Pressable>
         </View>
@@ -128,8 +127,8 @@ export default function WalletHome() {
           {ready && recent.length === 0 ? (
             <EmptyState
               emoji="🌱"
-              title="No transactions yet"
-              subtitle="Tap + Expense or + Income to get started"
+              title={t("empty.noTx.title")}
+              subtitle={t("empty.noTx.sub")}
             />
           ) : (
             recent.map((tx) => (

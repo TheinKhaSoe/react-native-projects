@@ -1,5 +1,7 @@
 /** All dates are handled in the device's local timezone as ISO "YYYY-MM-DD". */
 
+import { Lang, monthLabel as i18nMonthLabel } from "./i18n";
+
 export function toISODate(d: Date): string {
   const y = d.getFullYear();
   const m = `${d.getMonth() + 1}`.padStart(2, "0");
@@ -42,30 +44,32 @@ export function addMonths(month: string, delta: number): string {
   return `${yy}-${mm}`;
 }
 
-export function monthLabel(month: string): string {
-  const [y, m] = month.split("-").map((v) => Number(v));
-  const d = new Date(y, m - 1, 1);
-  return d.toLocaleDateString(undefined, { month: "long", year: "numeric" });
+export function monthLabel(month: string, lang?: Lang): string {
+  return i18nMonthLabel(month, lang ?? "en");
 }
 
-export function shortMonthLabel(month: string): string {
-  const [y, m] = month.split("-").map((v) => Number(v));
-  const d = new Date(y, m - 1, 1);
-  return d.toLocaleDateString(undefined, { month: "short", year: "2-digit" });
+export function shortMonthLabel(month: string, lang?: Lang): string {
+  return monthLabel(month, lang);
 }
 
-export function shortDateLabel(iso: string): string {
-  return dateFromISO(iso).toLocaleDateString(undefined, {
+export function shortDateLabel(iso: string, lang?: Lang): string {
+  const d = dateFromISO(iso);
+  const monthName = monthLabel(`${d.getFullYear()}-${`${d.getMonth() + 1}`.padStart(2, "0")}`, lang);
+  if (lang === "my") {
+    return `${d.getDate()} ${monthName} ${d.getFullYear()}`;
+  }
+  return d.toLocaleDateString(lang ?? "en", {
     month: "short",
     day: "numeric",
   });
 }
 
-export function friendlyDateLabel(iso: string): string {
+export function friendlyDateLabel(iso: string, lang?: Lang): string {
   const today = todayISO();
-  if (iso === today) return "Today";
-  if (iso === shiftDays(today, -1)) return "Yesterday";
-  return shortDateLabel(iso);
+  if (iso === today) return lang === "my" ? "ဒီနေ့" : "Today";
+  if (iso === shiftDays(today, -1)) return lang === "my" ? "မနေ့က" : "Yesterday";
+  if (iso === shiftDays(today, 1)) return lang === "my" ? "မနေ့မန်း" : "Tomorrow";
+  return shortDateLabel(iso, lang);
 }
 
 export function daysInMonth(month: string): number {

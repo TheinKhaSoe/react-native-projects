@@ -1,4 +1,4 @@
-/** Format an amount with thousand separators and the currency symbol as prefix. */
+/** Format an amount with thousand separators and the currency symbol as postfix. e.g. "1,000 ks" */
 export function formatMoney(amount: number, currency: string): string {
   const rounded = Math.round(amount * 100) / 100;
   const hasCents = Math.abs(rounded % 1) > 0.0001;
@@ -7,7 +7,7 @@ export function formatMoney(amount: number, currency: string): string {
     maximumFractionDigits: hasCents ? 2 : 0,
   });
   const sign = rounded < 0 ? "-" : "";
-  return `${sign}${currency}${formatted}`;
+  return `${sign}${formatted} ${currency}`;
 }
 
 /** Compact format for chips/labels: 1.2k, 3.5m */

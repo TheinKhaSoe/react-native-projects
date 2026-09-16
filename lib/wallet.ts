@@ -3,6 +3,7 @@ import type {
   AppSettings,
   CategoryTotal,
   DayTotal,
+  LanguageMode,
   MonthSummary,
   NewTransaction,
   ThemeMode,
@@ -16,7 +17,12 @@ import { uuid } from "./uuid";
 /* Settings                                                            */
 /* ------------------------------------------------------------------ */
 
-export type SettingKey = "currency" | "theme" | "fixed_income_default" | "username";
+export type SettingKey =
+  | "currency"
+  | "theme"
+  | "fixed_income_default"
+  | "username"
+  | "language";
 
 export async function loadSettings(db: DB): Promise<AppSettings> {
   const rows = await db.getAllAsync<{ key: string; value: string | null }>(
@@ -27,11 +33,14 @@ export async function loadSettings(db: DB): Promise<AppSettings> {
 
   const theme: ThemeMode =
     map.theme === "light" || map.theme === "dark" ? map.theme : "system";
+  const language: LanguageMode =
+    map.language === "en" || map.language === "my" ? map.language : "system";
   return {
     currency: map.currency ?? "$",
     theme,
     fixedIncomeDefault: Number(map.fixed_income_default ?? 0) || 0,
     username: map.username ?? "",
+    language,
   };
 }
 
@@ -78,6 +87,10 @@ export async function setFixedIncomeDefault(db: DB, amount: number): Promise<voi
 
 export async function setUsername(db: DB, name: string): Promise<void> {
   await setSetting(db, "username", name);
+}
+
+export async function setLanguage(db: DB, mode: LanguageMode): Promise<void> {
+  await setSetting(db, "language", mode);
 }
 
 export async function setFixedIncomeForMonth(

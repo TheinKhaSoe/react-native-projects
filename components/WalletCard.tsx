@@ -3,6 +3,7 @@ import { Text, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { formatMoney } from "@/lib/money";
+import { useT } from "@/store/wallet-context";
 import type { MonthSummary } from "@/lib/types";
 
 interface WalletCardProps {
@@ -12,6 +13,7 @@ interface WalletCardProps {
 }
 
 export function WalletCard({ summary, currency, daysLeft }: WalletCardProps) {
+  const t = useT();
   const overBudget = summary.left < 0;
   const perDay = summary.left / Math.max(1, daysLeft);
 
@@ -35,13 +37,13 @@ export function WalletCard({ summary, currency, daysLeft }: WalletCardProps) {
             <Ionicons name="wallet" size={18} color="#ffffff" />
           </View>
           <Text className="text-[13px] font-medium tracking-wide text-white/80">
-            Available budget
+            {t("card.available")}
           </Text>
         </View>
         <View className="flex-row items-center rounded-full bg-white/15 px-2.5 py-1">
           <Ionicons name="calendar" size={12} color="#ffffff" />
           <Text className="ml-1 text-[11px] font-medium text-white/90">
-            {daysLeft}d left
+            {t("card.daysLeft", { days: daysLeft })}
           </Text>
         </View>
       </View>
@@ -60,7 +62,7 @@ export function WalletCard({ summary, currency, daysLeft }: WalletCardProps) {
         <View className="flex-1 rounded-2xl bg-white/15 px-3 py-2.5">
           <View className="flex-row items-center gap-1">
             <Ionicons name="arrow-down" size={13} color="#a7f3d0" />
-            <Text className="text-[11px] font-medium text-white/75">Income</Text>
+            <Text className="text-[11px] font-medium text-white/75">{t("tile.totalIncome")}</Text>
           </View>
           <Text className="mt-0.5 text-[15px] font-semibold text-white" numberOfLines={1}>
             {formatMoney(summary.income, currency)}
@@ -70,7 +72,7 @@ export function WalletCard({ summary, currency, daysLeft }: WalletCardProps) {
         <View className="flex-1 rounded-2xl bg-black/15 px-3 py-2.5">
           <View className="flex-row items-center gap-1">
             <Ionicons name="arrow-up" size={13} color="#fecdd3" />
-            <Text className="text-[11px] font-medium text-white/75">Spent</Text>
+            <Text className="text-[11px] font-medium text-white/75">{t("tile.spent")}</Text>
           </View>
           <Text className="mt-0.5 text-[15px] font-semibold text-white" numberOfLines={1}>
             {formatMoney(summary.expense, currency)}
@@ -81,11 +83,11 @@ export function WalletCard({ summary, currency, daysLeft }: WalletCardProps) {
       <View className="mt-4 flex-row items-center justify-between border-t border-white/20 pt-3">
         <Text className="text-[11px] text-white/70">
           {overBudget
-            ? "⚠️ Over budget this month"
-            : `≈ ${formatMoney(Math.max(0, perDay), currency)} / day allowed`}
+            ? t("card.overBudget")
+            : t("card.perDay", { amount: formatMoney(Math.max(0, perDay), currency) })}
         </Text>
         <Text className="text-[11px] font-medium text-white/70">
-          {formatMoney(summary.fixedIncome, currency)} fixed
+          {t("card.fixed", { amount: formatMoney(summary.fixedIncome, currency) })}
         </Text>
       </View>
     </LinearGradient>
