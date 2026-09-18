@@ -131,7 +131,7 @@ export default function SettingsScreen() {
   );
 
   return (
-    <Screen style={{ marginBottom: -50 }}>
+    <Screen style={{ marginBottom: -35 }}>
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 32 }}
@@ -329,11 +329,12 @@ export default function SettingsScreen() {
           <Ionicons name="chevron-forward" size={16} color="#94a3b8" />
         </Pressable>
 
-        <Text
-          className="mt-6 text-center text-[11px] text-slate-300 dark:text-slate-600"
-          style={{ marginBottom: -50 }}
-        >
-          {t("set.footer")}
+        <Text className="mt-6 px-4 text-center text-[13px] text-slate-300 dark:text-slate-600">
+          {t("set.footer")} Powered by
+          <Text className="text-emerald-500 font-bold dark:text-yellow-700">
+            {" "}
+            TheinKha
+          </Text>
         </Text>
       </ScrollView>
     </Screen>

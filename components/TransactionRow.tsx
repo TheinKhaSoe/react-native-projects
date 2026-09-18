@@ -5,7 +5,7 @@ import { emojiFor } from "@/lib/categories";
 import { useWallet } from "@/store/wallet-context";
 import { formatMoney } from "@/lib/money";
 import { friendlyDateLabel } from "@/lib/dates";
-import type { Lang } from "@/lib/i18n";
+import { categoryLabel, type Lang } from "@/lib/i18n";
 import type { Transaction } from "@/lib/types";
 
 interface TransactionRowProps {
@@ -34,7 +34,7 @@ export function TransactionRow({ tx, currency, lang: propLang, onDelete }: Trans
           className="text-[14px] font-semibold text-slate-900 dark:text-slate-100"
           numberOfLines={1}
         >
-          {tx.category}
+          {categoryLabel(lang, tx.category)}
           {tx.note ? <Text className="font-normal text-slate-400 dark:text-slate-500"> · {tx.note}</Text> : null}
         </Text>
         <Text className="mt-0.5 text-[12px] text-slate-400 dark:text-slate-500">

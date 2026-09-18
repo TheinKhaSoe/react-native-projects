@@ -1,0 +1,96 @@
+Expense Tracker — Chatbot Commands (English & Burmese)
+======================================================
+
+Quick Reference
+---------------
+
+| English (EN)                          | Burmese (MY)                          | What it does                          |
+| "How much did I spend today?"         | "ဒီနေ့ဘယ်လောက်သုံးစွဲထားလဲ?"            | Shows today's spending                |
+| "How much did I spend this month?"    | "ဒီလဘယ်လောက်သုံးစွဲထားလဲ?"            | Shows this month's total expense      |
+| "Income this month?"                  | "ဒီလဝင်ငွေဘယ်လောက်လဲ?"                | Shows this month's total income       |
+| "How much did I earn today?"          | "ဒီနေ့ဝင်ငွေဘယ်လောက်ရထားလဲ?"           | Shows today's income                  |
+| "How much budget left?"               | "ဘတ်ဂျက်ဘယ်လောက်ကျန်သေးလဲ?"            | Shows remaining budget this month     |
+| "What's my balance?"                  | "လက်ကျန်ငွေဘယ်လောက်လဲ?"              | Same as budget left                   |
+| "How much did I spend on food this month?" | "ဒီလအစားအသောက်အတွက်ဘယ်လောက်သုံးထားလဲ?"   | Shows spending for Food category      |
+| "What's my biggest expense?"          | "အများဆုံးသုံးစွဲထားတဲ့မှတ်တမ်းကဘာလဲ?"   | Shows the biggest expense transaction |
+| "Summary" / "Overview" / "Report"     | "အနှစ်ချုပ်" / "အကျဉ်းချုပ်"             | Shows full monthly summary            |
+| "Per day allowance" / "How much can I spend per day?" | "မေးငွေ" / "ဘယ်လောက်သုံးလို့ရမလဲ?" | Shows daily spending allowance        |
+| "Last month spent"                    | "ပြီးခဲ့သောလ သုံးစွဲထားတဲ့ငွေ"        | Shows last month's total expense      |
+| "Last month income?"                  | "ပြီးခဲ့သောလ ဝင်ငွေဘယ်လောက်လဲ?"        | Shows last month's total income       |
+| "Last month budget?" / "Last month left?" | "ပြီးခဲ့သောလ ဘတ်ဂျက်ကျန်?" | Shows last month's remaining budget   |
+| "Spent this week?"                    | "ဒီအပတ်သုံးစွဲထားတဲ့ငွေ?"            | Shows this week's spending            |
+| "Yesterday income?"                 | "မနေ့ကဝင်ငွေဘယ်လောက်လဲ?"              | Shows income tracking info (monthly)  |
+| "Last week income?"                 | "ပျင်းခဲ့သောအပတ်ဝင်ငွေ?"            | Shows income tracking info (monthly)  |
+| "January expense?" / "August income?" | "ဇန်နဝါရီ ထွက်ငွေ?" / "ဩဂါတ် ဝင်ငွေ?" | Shows data for a specific month by name |
+| "How many transactions?"              | "မှတ်တမ်းဘယ်လောက်ရှိသလဲ?"              | Shows transaction count for current month |
+| "help" / "what can you do" / "commands" | "help" / "ကူညီ"                       | Shows help text                       |
+| "thanks" / "great" / "nice"           | "ကေတ္တပ်ပါ" / "ကျေးဇူးတယ်"            | Friendly response                     |
+
+Adding Transactions
+-------------------
+
+English:
+  "Add expense 5000 food"          — Add 5,000 expense in Food category
+  "Add income 50000 salary"        — Add 50,000 income in Salary category
+  "Log expense 5k lunch"           — Add 5,000 expense with note "lunch"
+  "Expense 3000 transport today"   — Add 3,000 transport expense for today
+  "Add expense 2000 groceries yesterday"  — Add 2,000 groceries for yesterday
+
+  Supported amount formats:
+    5000, 5,000, 5k, 1.5k, 2m
+
+  Category keywords (English):
+    Food, Transport, Shopping, Bills, Health, Fun, Education, Other
+    Salary, Freelance, Bonus, Gift
+
+  Income keywords:
+    income, salary, earned, earning, received, bonus, gift, freelance
+
+  Expense keywords:
+    expense, spent, paying, paid, bought, purchase, food, lunch, etc.
+
+  Date modifiers:
+    today, yesterday, tomorrow
+
+Burmese:
+  "ထွက်ငွေ ၅၀၀၀ အစာ"             — Add 5,000 expense in Food category
+  "ငွေဝင် ၅၀၀၀၀ လစာ"             — Add 50,000 income in Salary category
+  "ထွက်ငွေ ၅k ကော်ဖီ"             — Add 5,000 expense with note "coffee"
+  "ထွက်ငွေ ၃၀၀၀ သယ်ယူပို့ဆောင်ရေး ဒီနေ့" — Add transport expense for today
+
+  Supported amount formats:
+    ၅၀၀၀, ၅,၀၀၀, ၅k, ၁.၅k, ၂m
+    (Myanmar digits: ၀ ၁ ၂ ၃ ၄ ၅ ၆ ၇ ၈ ၉)
+
+  Category keywords (Burmese):
+    အစာ (Food), ကား (Transport), ဈေးဝယ် (Shopping),
+    ဘီလ် (Bills), ဆေး (Health), ဂိမ်း (Fun),
+    ကျောင်း (Education), လစာ (Salary),
+    အလွတ်တန်းအလုပ် (Freelance), ဆု (Bonus), ခုံ (Gift)
+
+  Income keywords (Burmese):
+    ဝင်ငွေ, လစာ, မေးငွေ, အထူ်, ပေးငွေ, လက်ခဏာ
+
+  Expense keywords (Burmese):
+    ထွက်ငွေ, အသုံ်, အကုန်, ဝယ်, ရရှိ, လက်ခဏာ
+
+  Date modifiers (Burmese):
+    ဒီနေ့ (today), မနေ့က (yesterday)
+
+Spending Queries
+----------------
+
+  English: "spent", "spending", "pay", "paid", "bought", "purchase", "expense"
+  Burmese: ထွက်ငွေ, အသု်သုံး, အကုန်, ဝယ်, ရရှိ, ပေးငွေ
+
+Category Queries
+----------------
+
+  English: "spent on food", "food spending this month", "transport this week"
+  Burmese: "အစာ အသု်သုံးမယ်", "ဒီလမျိုးဆက်သုံးထားတဲ့်"
+
+Tips:
+  - You can mix English and Burmese phrases
+  - Numbers can be written in Myanmar digits (၀-၉) or ASCII digits (0-9)
+  - The bot remembers your last used language setting
+  - Say "help" anytime to see this information again

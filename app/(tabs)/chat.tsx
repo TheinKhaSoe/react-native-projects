@@ -110,7 +110,7 @@ export default function ChatScreen() {
 
       try {
         const data: BotData = await buildBotContext();
-        const reply = interpret(text, data);
+        const reply = await interpret(text, data);
         setTimeout(() => {
           setMessages((prev) => [makeMessage("bot", reply), ...prev]);
           setThinking(false);
@@ -130,7 +130,7 @@ export default function ChatScreen() {
     keyboardHeight > 0 ? keyboardHeight + 8 : insets.bottom + 8;
 
   return (
-    <Screen padded={false} bottomInset={false} style={{ marginBottom: -50 }}>
+    <Screen padded={false} bottomInset={false} style={{ marginBottom: -40 }}>
       <View style={{ flex: 1 }}>
         {/* Header */}
         <View style={{ paddingHorizontal: 16 }}>

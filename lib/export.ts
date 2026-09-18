@@ -1,6 +1,6 @@
 import * as FileSystem from "expo-file-system";
-import * as Sharing from "expo-sharing";
 import * as MediaLibrary from "expo-media-library";
+import * as Sharing from "expo-sharing";
 import { Platform } from "react-native";
 import type { CategoryTotal, MonthSummary, Transaction } from "./types";
 import { formatMoney } from "./money";
@@ -18,6 +18,10 @@ export interface ReportData {
   biggestExpense: Transaction | null;
   currency: string;
   lang: Lang;
+}
+
+function getMimeType(format: ExportFormat): string {
+  return format === "txt" ? "text/plain" : "text/csv";
 }
 
 function pad(str: string, len: number): string {
@@ -45,14 +49,21 @@ export function generateTxtReport(data: ReportData): string {
   lines.push(`  ${pad("Total Income:", 22)} ${padStartNum(formatMoney(summary.income, currency), 14)}`);
   lines.push(`  ${pad("Total Expense:", 22)} ${padStartNum(formatMoney(summary.expense, currency), 14)}`);
   lines.push(`  ${pad("Budget Left:", 22)} ${padStartNum(formatMoney(summary.left, currency), 14)}`);
+  const expensePct = summary.income > 0 ? ((summary.expense / summary.income) * 100).toFixed(2) : "0.00";
+  lines.push(`  ${pad("Expense % of Income:", 22)} ${padStartNum(expensePct + "%", 14)}`);
   lines.push("");
 
   lines.push("--- Income by Category ---");
   if (incomeByCategory.length === 0) {
     lines.push("  (none)");
   } else {
+    const incTotal = summary.income;
+    const max = Math.max(...incomeByCategory.map((c) => c.category.length));
     for (const c of incomeByCategory) {
-      lines.push(`  ${pad(categoryLabel(lang, c.category), 20)} ${padStartNum(formatMoney(c.total, currency), 14)}`);
+      const pct = incTotal > 0 ? ((c.total / incTotal) * 100).toFixed(2) : "0.00";
+      lines.push(
+        `  ${pad(categoryLabel(lang, c.category), max)} ${padStartNum(formatMoney(c.total, currency), 14)}  (${pct}%)`
+      );
     }
   }
   lines.push("");
@@ -64,7 +75,7 @@ export function generateTxtReport(data: ReportData): string {
     const expTotal = summary.expense;
     const max = Math.max(...expenseByCategory.map((c) => c.category.length));
     for (const c of expenseByCategory) {
-      const pct = expTotal > 0 ? Math.round((c.total / expTotal) * 100) : 0;
+      const pct = expTotal > 0 ? ((c.total / expTotal) * 100).toFixed(2) : "0.00";
       lines.push(
         `  ${pad(categoryLabel(lang, c.category), max)} ${padStartNum(formatMoney(c.total, currency), 14)}  (${pct}%)`
       );
@@ -99,14 +110,16 @@ export function generateCsvReport(data: ReportData): string {
   rows.push("Section,Item,Amount,Percentage");
 
   rows.push(`"Summary","Total Income","${formatMoney(summary.income, currency)}",""`);
-  rows.push(`"Summary","Total Expense","${formatMoney(summary.expense, currency)}",""`);
+  rows.push(`"Summary","Total Expense","${formatMoney(summary.expense, currency)}","${summary.income > 0 ? ((summary.expense / summary.income) * 100).toFixed(2) : "0.00"}%"`);
   rows.push(`"Summary","Budget Left","${formatMoney(summary.left, currency)}",""`);
   rows.push("");
 
   if (incomeByCategory.length > 0) {
     rows.push('"Income by Category",Category,Total,%');
+    const incTotal = summary.income;
     for (const c of incomeByCategory) {
-      rows.push(`"Income by Category","${categoryLabel(lang, c.category)}","${formatMoney(c.total, currency)}",""`);
+      const pct = incTotal > 0 ? ((c.total / incTotal) * 100).toFixed(2) : "0.00";
+      rows.push(`"Income by Category","${categoryLabel(lang, c.category)}","${formatMoney(c.total, currency)}","${pct}%"`);
     }
     rows.push("");
   }
@@ -115,7 +128,7 @@ export function generateCsvReport(data: ReportData): string {
     rows.push('"Expense by Category",Category,Total,%');
     const expTotal = summary.expense;
     for (const c of expenseByCategory) {
-      const pct = expTotal > 0 ? Math.round((c.total / expTotal) * 100) : 0;
+      const pct = expTotal > 0 ? ((c.total / expTotal) * 100).toFixed(2) : "0.00";
       rows.push(`"Expense by Category","${categoryLabel(lang, c.category)}","${formatMoney(c.total, currency)}","${pct}%"`);
     }
     rows.push("");
@@ -139,11 +152,11 @@ function buildFilename(month: string, format: ExportFormat): string {
 
 const ALBUM_NAME = "Expense Reports";
 
-/** Save file to device. Uses MediaLibrary on mobile (Documents/Dashboard accessible), Blob on web. */
+/** Save file to device. Uses Directory picking on Android for user-selected location, MediaLibrary on iOS. */
 export async function saveReportToDevice(
   data: ReportData,
   format: ExportFormat,
-): Promise<string> {
+): Promise<string | null> {
   const content = format === "txt" ? generateTxtReport(data) : generateCsvReport(data);
   const filename = buildFilename(data.month, format);
 
@@ -156,17 +169,40 @@ export async function saveReportToDevice(
   const file = new FileSystem.File(FileSystem.Paths.document, filename);
   file.write(content);
 
-  const permission = await MediaLibrary.requestPermissionsAsync(true);
-  if (!permission.granted) {
+  if (Platform.OS === "ios") {
+    let permission;
+    try {
+      permission = await MediaLibrary.requestPermissionsAsync(true);
+    } catch {
+      return file.uri;
+    }
+    if (permission.granted) {
+      try {
+        await MediaLibrary.createAssetAsync(file.uri, ALBUM_NAME);
+        return file.uri;
+      } catch {
+        return file.uri;
+      }
+    }
     return file.uri;
   }
 
-  try {
-    await MediaLibrary.createAssetAsync(file.uri, ALBUM_NAME);
-    return file.uri;
-  } catch {
-    return file.uri;
+  if (Platform.OS === "android") {
+    let dir: FileSystem.Directory | null = null;
+    try {
+      dir = (await FileSystem.Directory.pickDirectoryAsync()) as FileSystem.Directory | null;
+    } catch {
+      return null;
+    }
+    if (!dir) {
+      return null;
+    }
+    const destFile = dir.createFile(filename, getMimeType(format));
+    destFile.write(content);
+    return destFile.uri;
   }
+
+  return file.uri;
 }
 
 export async function shareReport(
@@ -177,7 +213,7 @@ export async function shareReport(
   const filename = buildFilename(data.month, format);
 
   if (Platform.OS === "web") {
-    const blob = new Blob([content], { type: format === "txt" ? "text/plain" : "text/csv" });
+    const blob = new Blob([content], { type: getMimeType(format) });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -194,6 +230,6 @@ export async function shareReport(
   file.write(content);
   await Sharing.shareAsync(file.uri, {
     dialogTitle: `Export ${format.toUpperCase()}`,
-    mimeType: format === "txt" ? "text/plain" : "text/csv",
+    mimeType: getMimeType(format),
   });
 }

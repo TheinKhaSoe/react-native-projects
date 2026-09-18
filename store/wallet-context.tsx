@@ -287,9 +287,14 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
         expense: lastMonthSum.expense,
         left: lastMonthSum.left,
       },
-      categories: cats,
-      biggest,
-      txCount: count,
+       categories: cats,
+       biggest,
+       txCount: count,
+       monthSummary: async (monthKey: string) => {
+         const db = dbRef.current;
+         if (!db) return null;
+         return wallet.getMonthSummary(db, monthKey);
+       },
       addExpense: (amount, category, note, date) => {
         void addTransaction({ type: "expense", amount, category, note, date });
       },
