@@ -237,6 +237,11 @@ const DICT = {
     my: "အောင်မြင်စွာ ထုတ်ယူပြီးပါပြီ။",
   },
 
+  "report.exportFailed": {
+    en: "Export failed",
+    my: "ထုတ်ယူမှု မအောင်မြင်ပါ",
+  },
+
   "report.savedTo": {
     en: "Saved to device:\n{path}",
     my: "စက်ပစ္စည်းသို့သိမ်းဆည်းပါရသည်:\n{path}",

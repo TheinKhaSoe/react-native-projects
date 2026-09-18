@@ -137,11 +137,41 @@ function buildFilename(month: string, format: ExportFormat): string {
   return `expense-report-${month}-${ts}.${format}`;
 }
 
-/** Save file to device and optionally share. Returns the local file URI on mobile. */
-export async function saveReport(
+const ALBUM_NAME = "Expense Reports";
+
+/** Save file to device. Uses MediaLibrary on mobile (Documents/Dashboard accessible), Blob on web. */
+export async function saveReportToDevice(
   data: ReportData,
   format: ExportFormat,
-  share: boolean,
+): Promise<string> {
+  const content = format === "txt" ? generateTxtReport(data) : generateCsvReport(data);
+  const filename = buildFilename(data.month, format);
+
+  if (Platform.OS === "web") {
+    void content;
+    void filename;
+    return "downloaded";
+  }
+
+  const file = new FileSystem.File(FileSystem.Paths.document, filename);
+  file.write(content);
+
+  const permission = await MediaLibrary.requestPermissionsAsync(true);
+  if (!permission.granted) {
+    return file.uri;
+  }
+
+  try {
+    await MediaLibrary.createAssetAsync(file.uri, ALBUM_NAME);
+    return file.uri;
+  } catch {
+    return file.uri;
+  }
+}
+
+export async function shareReport(
+  data: ReportData,
+  format: ExportFormat,
 ): Promise<void> {
   const content = format === "txt" ? generateTxtReport(data) : generateCsvReport(data);
   const filename = buildFilename(data.month, format);
@@ -162,43 +192,8 @@ export async function saveReport(
 
   const file = new FileSystem.File(FileSystem.Paths.document, filename);
   file.write(content);
-
-  if (share) {
-    await Sharing.shareAsync(file.uri, {
-      dialogTitle: `Export ${format.toUpperCase()}`,
-      mimeType: format === "txt" ? "text/plain" : "text/csv",
-    });
-  }
-}
-
-/** Save to device's media library (appears in Photos/Pictures/Files apps). */
-export async function saveReportToDevice(
-  data: ReportData,
-  format: ExportFormat,
-): Promise<string> {
-  if (Platform.OS === "web") {
-    void await saveReport(data, format, false);
-    return "downloaded";
-  }
-
-  const content = format === "txt" ? generateTxtReport(data) : generateCsvReport(data);
-  const filename = buildFilename(data.month, format);
-
-  const file = new FileSystem.File(FileSystem.Paths.document, filename);
-  file.write(content);
-
-  const permission = await MediaLibrary.requestPermissionsAsync(true);
-  if (!permission.granted) {
-    return file.uri;
-  }
-
-  await MediaLibrary.createAssetAsync(file.uri);
-  return file.uri;
-}
-
-export async function shareReport(
-  data: ReportData,
-  format: ExportFormat,
-): Promise<void> {
-  await saveReport(data, format, true);
+  await Sharing.shareAsync(file.uri, {
+    dialogTitle: `Export ${format.toUpperCase()}`,
+    mimeType: format === "txt" ? "text/plain" : "text/csv",
+  });
 }
